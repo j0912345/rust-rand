@@ -147,12 +147,14 @@ pub trait RngCore {
     /// using `self.next_u64() as u32` or via [`impls::next_u32_via_fill`].
     fn next_u32(&mut self) -> u32;
 
+
     /// Return the next random `u64`.
     ///
     /// RNGs must implement at least one method from this trait directly. In
     /// the case this method is not implemented directly, it can be implemented
     /// via [`impls::next_u64_via_u32`] or via [`impls::next_u64_via_fill`].
     fn next_u64(&mut self) -> u64;
+    
 
     /// Fill `dest` with random data.
     ///
