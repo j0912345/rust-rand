@@ -135,6 +135,17 @@ pub trait Rng: RngCore {
         range.sample_single(self)
     }
 
+    /// gen_range_rng_state_not_advanced() 
+    /// FINISH IMPLEMENTING THIS!
+    fn gen_range_rng_state_not_advanced<T, R>(&mut self, range: R) -> T
+    where
+        T: SampleUniform,
+        R: SampleRange<T>
+    {
+        assert!(!range.is_empty(), "cannot sample empty range");
+        range.sample_single(self)
+    }
+
     /// Sample a new value, using the given distribution.
     ///
     /// ### Example

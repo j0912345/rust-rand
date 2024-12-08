@@ -154,6 +154,13 @@ pub trait RngCore {
     /// the case this method is not implemented directly, it can be implemented
     /// via [`impls::next_u64_via_u32`] or via [`impls::next_u64_via_fill`].
     fn next_u64(&mut self) -> u64;
+
+    /// Returns what the next random number will be after x updates of the rng state (ie calls to next_u64). only implemented for Xoshiro256PlusPlus/maybe Xoshiro128PlusPlus
+    ///
+    /// this is a custom function im using in my modified version of ruffle that shows what the upcoming RNG looks like, required for the game I want to TAS.
+    /// also why it's only implemented for Xoshiro<number>PlusPlus. this might not be very possible for other rng implementations, mainly anything from the os,
+    /// but I also I don't need it. any other implementation will throw an error calling this function.
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, Error>;
     
 
     /// Fill `dest` with random data.
@@ -443,6 +450,11 @@ impl<'a, R: RngCore + ?Sized> RngCore for &'a mut R {
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
         (**self).try_fill_bytes(dest)
     }
+
+    #[inline(always)]
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, Error>{
+        (**self).next_rng_value_after_state_updates(rng_state_updates)
+    }
 }
 
 // Implement `RngCore` for boxed references to an `RngCore`.
@@ -468,6 +480,11 @@ impl<R: RngCore + ?Sized> RngCore for Box<R> {
     #[inline(always)]
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
         (**self).try_fill_bytes(dest)
+    }
+
+    #[inline(always)]
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, Error>{
+        (**self).next_rng_value_after_state_updates(rng_state_updates)
     }
 }
 

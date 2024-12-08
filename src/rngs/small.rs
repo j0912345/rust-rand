@@ -100,6 +100,11 @@ impl RngCore for SmallRng {
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
         self.0.try_fill_bytes(dest)
     }
+
+    #[inline(always)]
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, Error>{
+        self.0.next_rng_value_after_state_updates(rng_state_updates)
+    }
 }
 
 impl SeedableRng for SmallRng {

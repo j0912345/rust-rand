@@ -81,6 +81,38 @@ impl RngCore for Xoshiro128PlusPlus {
     }
 
     #[inline]
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> u64 {
+        let temp_rng_state = self.s;
+        let result_starstar = temp_rng_state[0]
+            .wrapping_add(self.s[3])
+            .rotate_left(7)
+            .wrapping_add(self.s[0]);
+
+        let i:u64 = 0u64;
+
+        while i < rng_state_updates {
+            result_starstar = temp_rng_state[0]
+                .wrapping_add(self.s[3])
+                .rotate_left(7)
+                .wrapping_add(self.s[0]);
+
+            let t = temp_rng_state[1] << 9;
+
+            temp_rng_state[2] ^= temp_rng_state[0];
+            temp_rng_state[3] ^= temp_rng_state[1];
+            temp_rng_state[1] ^= temp_rng_state[2];
+            temp_rng_state[0] ^= temp_rng_state[3];
+
+            temp_rng_state[2] ^= t;
+
+            temp_rng_state[3] = temp_rng_state[3].rotate_left(11);
+            i += 1;
+        }
+
+        Ok(result_starstar as u32)
+    }
+
+    #[inline]
     fn next_u64(&mut self) -> u64 {
         next_u64_via_u32(self)
     }

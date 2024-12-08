@@ -88,6 +88,41 @@ impl RngCore for Xoshiro256PlusPlus {
     }
 
     #[inline]
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> u64 {
+        let temp_rng_state = self.s;
+
+        let result_plusplus = temp_rng_state[0]
+            .wrapping_add(temp_rng_state[3])
+            .rotate_left(23)
+            .wrapping_add(temp_rng_state[0]);
+        
+        let i:u64 = 0u64;
+
+        while i < rng_state_updates {
+
+            result_plusplus = temp_rng_state[0]
+                .wrapping_add(temp_rng_state[3])
+                .rotate_left(23)
+                .wrapping_add(temp_rng_state[0]);
+
+            let t = temp_rng_state[1] << 17;
+
+            temp_rng_state[2] ^= temp_rng_state[0];
+            temp_rng_state[3] ^= temp_rng_state[1];
+            temp_rng_state[1] ^= temp_rng_state[2];
+            temp_rng_state[0] ^= temp_rng_state[3];
+
+            temp_rng_state[2] ^= t;
+
+            temp_rng_state[3] = temp_rng_state[3].rotate_left(45);
+
+            i += 1;
+        }
+
+        Ok(result_plusplus)
+    }
+
+    #[inline]
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         fill_bytes_via_next(self, dest);
     }
