@@ -160,7 +160,7 @@ pub trait RngCore {
     /// this is a custom function im using in my modified version of ruffle that shows what the upcoming RNG looks like, required for the game I want to TAS.
     /// also why it's only implemented for Xoshiro<number>PlusPlus. this might not be very possible for other rng implementations, mainly anything from the os,
     /// but I also I don't need it. any other implementation will throw an error calling this function.
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, Error>;
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>;
     
 
     /// Fill `dest` with random data.
@@ -452,7 +452,7 @@ impl<'a, R: RngCore + ?Sized> RngCore for &'a mut R {
     }
 
     #[inline(always)]
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, Error>{
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
         (**self).next_rng_value_after_state_updates(rng_state_updates)
     }
 }
@@ -483,7 +483,7 @@ impl<R: RngCore + ?Sized> RngCore for Box<R> {
     }
 
     #[inline(always)]
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, Error>{
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
         (**self).next_rng_value_after_state_updates(rng_state_updates)
     }
 }

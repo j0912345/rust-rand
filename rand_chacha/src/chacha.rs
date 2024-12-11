@@ -172,6 +172,11 @@ macro_rules! chacha_impl {
             fn try_fill_bytes(&mut self, bytes: &mut [u8]) -> Result<(), Error> {
                 self.rng.try_fill_bytes(bytes)
             }
+
+            #[inline(always)]
+            fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
+                Err("next_rng_value_after_state_updates not implemented.")
+            }
         }
 
         impl $ChaChaXRng {

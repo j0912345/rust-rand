@@ -68,6 +68,11 @@ impl RngCore for OsRng {
         getrandom(dest)?;
         Ok(())
     }
+
+    #[inline(always)]
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
+        Err("next_rng_value_after_state_updates not implemented.")
+    }
 }
 
 #[test]

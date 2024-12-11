@@ -299,6 +299,25 @@ pub trait UniformSampler: Sized {
         let uniform: Self = UniformSampler::new_inclusive(low, high);
         uniform.sample(rng)
     }
+
+    fn sample_single_not_advanced<R: Rng + ?Sized, B1, B2>(low: B1, high: B2, rng: &mut R, rng_update_states:u64)
+    -> Self::X
+    where B1: SampleBorrow<Self::X> + Sized,
+          B2: SampleBorrow<Self::X> + Sized
+    {
+        let uniform: Self = UniformSampler::new_inclusive(low, high);
+        uniform.sample_single_not_advanced(rng)
+    }
+
+    /// same as sample_single_inclusive, but doesn't advance the RNG state.
+    fn sample_single_inclusive_not_advanced<R: Rng + ?Sized, B1, B2>(low: B1, high: B2, rng: &mut R, rng_update_states:u64)
+    -> Self::X
+    where B1: SampleBorrow<Self::X> + Sized,
+          B2: SampleBorrow<Self::X> + Sized
+    {
+        let uniform: Self = UniformSampler::new_inclusive(low, high);
+        uniform.sample_single_inclusive_not_advanced(rng)
+    }
 }
 
 impl<X: SampleUniform> From<Range<X>> for Uniform<X> {
@@ -350,6 +369,9 @@ pub trait SampleRange<T> {
     /// Generate a sample from the given range.
     fn sample_single<R: RngCore + ?Sized>(self, rng: &mut R) -> T;
 
+    /// do the same thing as sample_single, but without advancing the RNG state.
+    fn sample_single_not_advanced<R: RngCore + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T;
+
     /// Check whether the range is empty.
     fn is_empty(&self) -> bool;
 }
@@ -358,6 +380,11 @@ impl<T: SampleUniform + PartialOrd> SampleRange<T> for Range<T> {
     #[inline]
     fn sample_single<R: RngCore + ?Sized>(self, rng: &mut R) -> T {
         T::Sampler::sample_single(self.start, self.end, rng)
+    }
+
+    #[inline]
+    fn sample_single_not_advanced<R: RngCore + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T {
+        T::Sampler::sample_single_not_advanced(self.start, self.end, rng, rng_state_updates)
     }
 
     #[inline]
@@ -370,6 +397,11 @@ impl<T: SampleUniform + PartialOrd> SampleRange<T> for RangeInclusive<T> {
     #[inline]
     fn sample_single<R: RngCore + ?Sized>(self, rng: &mut R) -> T {
         T::Sampler::sample_single_inclusive(self.start(), self.end(), rng)
+    }
+
+    #[inline]
+    fn sample_single_not_advanced<R: RngCore + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T {
+        T::Sampler::sample_single_inclusive_not_advanced(self.start(), self.end(), rng, rng_state_updates)
     }
 
     #[inline]
@@ -552,6 +584,66 @@ macro_rules! uniform_int_impl {
                     }
                 }
             }
+
+            #[inline]
+            fn sample_single_not_advanced<R: Rng + ?Sized, B1, B2>(low_b: B1, high_b: B2, rng: &mut R, rng_state_updates:u64) -> Self::X
+            where
+                B1: SampleBorrow<Self::X> + Sized,
+                B2: SampleBorrow<Self::X> + Sized,
+            {
+                let low = *low_b.borrow();
+                let high = *high_b.borrow();
+                assert!(low < high, "UniformSampler::sample_single: low >= high");
+                Self::sample_single_inclusive_not_advanced(low, high - 1, rng, rng_state_updates)
+            }
+
+
+            // no I can't be bothered to hook this up to rng.gen(). that seems to just use the type and thus i can't magically override it with my custom thing.
+            // so we're instead just directly calling the function. at time of writing it only supports 64 bit and maybe 32 bit smallRng anyway.
+            // remember I'm doing this as somewhat of a quick hack so I can modify ruffle to show up-coming/current RNG so I can TAS a video game.
+            #[inline]
+            fn sample_single_inclusive_not_advanced<R: Rng + ?Sized, B1, B2>(low_b: B1, high_b: B2, rng: &mut R, rng_state_updates:u64) -> Self::X
+            where
+                B1: SampleBorrow<Self::X> + Sized,
+                B2: SampleBorrow<Self::X> + Sized,
+            {
+                let low = *low_b.borrow();
+                let high = *high_b.borrow();
+                assert!(low <= high, "UniformSampler::sample_single_inclusive: low > high");
+                let range = high.wrapping_sub(low).wrapping_add(1) as $unsigned as $u_large;
+                // If the above resulted in wrap-around to 0, the range is $ty::MIN..=$ty::MAX,
+                // and any integer will do.
+                if range == 0 {
+                    return rng.next_rng_value_after_state_updates(rng_state_updates);
+                }
+
+                let zone = if ::core::$unsigned::MAX <= ::core::u16::MAX as $unsigned {
+                    // Using a modulus is faster than the approximation for
+                    // i8 and i16. I suppose we trade the cost of one
+                    // modulus for near-perfect branch prediction.
+                    let unsigned_max: $u_large = ::core::$u_large::MAX;
+                    let ints_to_reject = (unsigned_max - range + 1) % range;
+                    unsigned_max - ints_to_reject
+                } else {
+                    // conservative but fast approximation. `- 1` is necessary to allow the
+                    // same comparison without bias.
+                    (range << range.leading_zeros()).wrapping_sub(1)
+                };
+
+                let i = 0
+                loop {
+                    let v: $u_large = rng.next_rng_value_after_state_updates(i+rng_state_updates);
+                    let (hi, lo) = v.wmul(range);
+                    
+                    if lo <= zone {
+                        return low.wrapping_add(hi as $ty);
+                    }
+                    i += 1;
+                }
+            }
+
+
+            
         }
     };
 }

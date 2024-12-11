@@ -88,7 +88,7 @@ impl RngCore for Xoshiro256PlusPlus {
     }
 
     #[inline]
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> u64 {
+    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64> {
         let temp_rng_state = self.s;
 
         let result_plusplus = temp_rng_state[0]
