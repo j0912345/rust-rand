@@ -114,12 +114,15 @@ use crate::distributions::utils::{BoolAsSIMD, FloatAsSIMD, FloatSIMDUtils, Widen
 use crate::distributions::Distribution;
 use crate::{Rng, RngCore};
 
+use crate::rng::PubRngState;
+
 #[cfg(not(feature = "std"))]
 #[allow(unused_imports)] // rustc doesn't detect that this is actually used
 use crate::distributions::utils::Float;
 
 #[cfg(feature = "simd_support")] use packed_simd::*;
 
+use rand_core::PublicRngState;
 #[cfg(feature = "serde1")]
 use serde::{Serialize, Deserialize};
 
@@ -300,7 +303,8 @@ pub trait UniformSampler: Sized {
         uniform.sample(rng)
     }
 
-    fn sample_single_not_advanced<R: Rng + ?Sized, B1, B2>(low: B1, high: B2, rng: &mut R, rng_update_states:u64)
+    /// 
+    fn sample_single_not_advanced<R: PubRngState + ?Sized, B1, B2>(low: B1, high: B2, rng: &mut R, rng_update_states:u64)
     -> Self::X
     where B1: SampleBorrow<Self::X> + Sized,
           B2: SampleBorrow<Self::X> + Sized
@@ -310,7 +314,7 @@ pub trait UniformSampler: Sized {
     }
 
     /// same as sample_single_inclusive, but doesn't advance the RNG state.
-    fn sample_single_inclusive_not_advanced<R: Rng + ?Sized, B1, B2>(low: B1, high: B2, rng: &mut R, rng_update_states:u64)
+    fn sample_single_inclusive_not_advanced<R: PubRngState + ?Sized, B1, B2>(low: B1, high: B2, rng: &mut R, rng_update_states:u64)
     -> Self::X
     where B1: SampleBorrow<Self::X> + Sized,
           B2: SampleBorrow<Self::X> + Sized
@@ -370,7 +374,7 @@ pub trait SampleRange<T> {
     fn sample_single<R: RngCore + ?Sized>(self, rng: &mut R) -> T;
 
     /// do the same thing as sample_single, but without advancing the RNG state.
-    fn sample_single_not_advanced<R: RngCore + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T;
+    fn sample_single_not_advanced<R: PublicRngState + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T;
 
     /// Check whether the range is empty.
     fn is_empty(&self) -> bool;
@@ -400,7 +404,7 @@ impl<T: SampleUniform + PartialOrd> SampleRange<T> for RangeInclusive<T> {
     }
 
     #[inline]
-    fn sample_single_not_advanced<R: RngCore + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T {
+    fn sample_single_not_advanced<R: PublicRngState + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T {
         T::Sampler::sample_single_inclusive_not_advanced(self.start(), self.end(), rng, rng_state_updates)
     }
 
@@ -598,11 +602,9 @@ macro_rules! uniform_int_impl {
             }
 
 
-            // no I can't be bothered to hook this up to rng.gen(). that seems to just use the type and thus i can't magically override it with my custom thing.
-            // so we're instead just directly calling the function. at time of writing it only supports 64 bit and maybe 32 bit smallRng anyway.
-            // remember I'm doing this as somewhat of a quick hack so I can modify ruffle to show up-coming/current RNG so I can TAS a video game.
+            // :(
             #[inline]
-            fn sample_single_inclusive_not_advanced<R: Rng + ?Sized, B1, B2>(low_b: B1, high_b: B2, rng: &mut R, rng_state_updates:u64) -> Self::X
+            fn sample_single_inclusive_not_advanced<R: PubRngState + ?Sized, B1, B2>(low_b: B1, high_b: B2, rng: &mut R, rng_state_updates:u64) -> Self::X
             where
                 B1: SampleBorrow<Self::X> + Sized,
                 B2: SampleBorrow<Self::X> + Sized,
@@ -614,7 +616,7 @@ macro_rules! uniform_int_impl {
                 // If the above resulted in wrap-around to 0, the range is $ty::MIN..=$ty::MAX,
                 // and any integer will do.
                 if range == 0 {
-                    return rng.next_rng_value_after_state_updates(rng_state_updates);
+                    return rng.next_rng_value_after_state_updates_u64(rng_state_updates);
                 }
 
                 let zone = if ::core::$unsigned::MAX <= ::core::u16::MAX as $unsigned {
@@ -630,9 +632,9 @@ macro_rules! uniform_int_impl {
                     (range << range.leading_zeros()).wrapping_sub(1)
                 };
 
-                let i = 0
+                let mut i = 0;
                 loop {
-                    let v: $u_large = rng.next_rng_value_after_state_updates(i+rng_state_updates);
+                    let v: $u_large = rng.next_rng_value_after_state_updates_u64(i+rng_state_updates);
                     let (hi, lo) = v.wmul(range);
                     
                     if lo <= zone {

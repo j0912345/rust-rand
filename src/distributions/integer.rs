@@ -9,6 +9,7 @@
 //! The implementations of the `Standard` distribution for integer types.
 
 use crate::distributions::{Distribution, Standard};
+use crate::rng::PubRngState;
 use crate::Rng;
 #[cfg(all(target_arch = "x86", feature = "simd_support"))]
 use core::arch::x86::{__m128i, __m256i};
@@ -18,11 +19,13 @@ use core::num::{NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
     NonZeroU128};
 #[cfg(feature = "simd_support")] use packed_simd::*;
 
+
+
 impl Distribution<u8> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> u8 {
         rng.next_u32() as u8
-    }
+    }   
 }
 
 impl Distribution<u16> for Standard {

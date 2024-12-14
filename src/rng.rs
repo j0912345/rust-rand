@@ -9,7 +9,7 @@
 
 //! [`Rng`] trait
 
-use rand_core::{Error, RngCore};
+use rand_core::{Error, RngCore, PublicRngState};
 use crate::distributions::uniform::{SampleRange, SampleUniform};
 use crate::distributions::{self, Distribution, Standard};
 use core::num::Wrapping;
@@ -136,14 +136,15 @@ pub trait Rng: RngCore {
     }
 
     /// gen_range_rng_state_not_advanced() is like gen_range but it doesn't advance the RNG state. see next_rng_value_after_state_updates().
-    fn gen_range_rng_state_not_advanced<T, R>(&mut self, range: R, rng_state_updates: u64) -> T
-    where
-        T: SampleUniform,
-        R: SampleRange<T>
-    {
-        assert!(!range.is_empty(), "cannot sample empty range");
-        range.sample_single_not_advanced(self, rng_state_updates)
-    }
+    /// this is in PubRngState now.
+    // fn gen_range_rng_state_not_advanced<T, R>(&mut self, range: R, rng_state_updates: u64) -> T
+    // where
+    //     T: SampleUniform,
+    //     R: SampleRange<T>
+    // {
+    //     assert!(!range.is_empty(), "cannot sample empty range");
+    //     range.sample_single_not_advanced(self, rng_state_updates)
+    // }
 
     /// Sample a new value, using the given distribution.
     ///
@@ -313,6 +314,31 @@ pub trait Rng: RngCore {
 }
 
 impl<R: RngCore + ?Sized> Rng for R {}
+
+pub trait PubRngState: PublicRngState{
+    #[inline(always)]
+    fn gen_range_rng_state_not_advanced<T, R>(&mut self, range: R, rng_state_updates: u64) -> T
+    where
+        T: SampleUniform,
+        R: SampleRange<T>
+    {
+        assert!(!range.is_empty(), "cannot sample empty range");
+        range.sample_single_not_advanced(self, rng_state_updates)
+    }
+
+    // #[inline(always)]
+    // fn gen<T>(&mut self, rng_state_updates: u64) -> T
+    // where Standard: Distribution<T> {
+    //     Standard.sample_not_advanced(self, rng_state_updates)
+    // }
+
+    // fn sample<T, D: Distribution<T>>(&mut self, distr: D) -> T {
+    //     distr.sample(self)
+    // }
+}
+
+impl<R: PublicRngState + ?Sized> PubRngState for R {}
+
 
 /// Types which may be filled with random data
 ///

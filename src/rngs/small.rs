@@ -8,7 +8,7 @@
 
 //! A small fast RNG
 
-use rand_core::{Error, RngCore, SeedableRng};
+use rand_core::{Error, RngCore, SeedableRng, PublicRngState};
 
 #[cfg(target_pointer_width = "64")]
 type Rng = super::xoshiro256plusplus::Xoshiro256PlusPlus;
@@ -100,11 +100,6 @@ impl RngCore for SmallRng {
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
         self.0.try_fill_bytes(dest)
     }
-
-    #[inline(always)]
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, Error>{
-        self.0.next_rng_value_after_state_updates(rng_state_updates)
-    }
 }
 
 impl SeedableRng for SmallRng {
@@ -119,4 +114,21 @@ impl SeedableRng for SmallRng {
     fn from_rng<R: RngCore>(rng: R) -> Result<Self, Error> {
         Rng::from_rng(rng).map(SmallRng)
     }
+}
+
+impl PublicRngState for SmallRng{
+    #[inline(always)]
+    fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64{
+        self.0.next_rng_value_after_state_updates_u64(rng_state_updates)
+    }
+
+    #[inline(always)]
+    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u32) -> u32{
+        self.0.next_rng_value_after_state_updates_u32(rng_state_updates)
+    }
+
+    // #[inline(always)]
+    // fn gen_range_rng_state_not_advanced(rng_state_updates:u64) -> u64{
+    //     self.0.gen_range_rng_state_not_advanced(rng_state_updates)
+    // }
 }

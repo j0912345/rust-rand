@@ -238,11 +238,6 @@ where
         self.fill_bytes(dest);
         Ok(())
     }
-
-    #[inline(always)]
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
-        Err("next_rng_value_after_state_updates not implemented.")
-    }
 }
 
 impl<R: BlockRngCore + SeedableRng> SeedableRng for BlockRng<R> {
@@ -411,11 +406,6 @@ where
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
         self.fill_bytes(dest);
         Ok(())
-    }
-
-    #[inline(always)]
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
-        Err("next_rng_value_after_state_updates not implemented.")
     }
 }
 

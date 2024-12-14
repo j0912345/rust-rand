@@ -48,7 +48,6 @@ use core::default::Default;
 pub use error::Error;
 #[cfg(feature = "getrandom")] pub use os::OsRng;
 
-
 pub mod block;
 mod error;
 pub mod impls;
@@ -160,7 +159,7 @@ pub trait RngCore {
     /// this is a custom function im using in my modified version of ruffle that shows what the upcoming RNG looks like, required for the game I want to TAS.
     /// also why it's only implemented for Xoshiro<number>PlusPlus. this might not be very possible for other rng implementations, mainly anything from the os,
     /// but I also I don't need it. any other implementation will throw an error calling this function.
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>;
+    // fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>;
     
 
     /// Fill `dest` with random data.
@@ -427,6 +426,27 @@ pub trait SeedableRng: Sized {
     }
 }
 
+/// `PublicRngState`. custom trait added so I can see upcoming rng in ruffle for the game I want to TAS.
+pub trait PublicRngState{
+    #[inline(always)]
+    /// generate u64 value without updating the rng state
+    fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64;
+    /// generate u32 value without updating the rng state
+    #[inline(always)] 
+    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u32) -> u32;
+
+
+    // #[inline(always)]
+    // fn gen_range_rng_state_not_advanced<T, R>(&mut self, range: R, rng_state_updates: u64) -> T
+    // where
+    //     T: SampleUniform,
+    //     R: SampleRange<T>
+    // {
+    //     assert!(!range.is_empty(), "cannot sample empty range");
+    //     range.sample_single_not_advanced(self, rng_state_updates)
+    // }
+}
+
 // Implement `RngCore` for references to an `RngCore`.
 // Force inlining all functions, so that it is up to the `RngCore`
 // implementation and the optimizer to decide on inlining.
@@ -451,10 +471,10 @@ impl<'a, R: RngCore + ?Sized> RngCore for &'a mut R {
         (**self).try_fill_bytes(dest)
     }
 
-    #[inline(always)]
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
-        (**self).next_rng_value_after_state_updates(rng_state_updates)
-    }
+    // #[inline(always)]
+    // fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
+    //     (**self).next_rng_value_after_state_updates(rng_state_updates)
+    // }
 }
 
 // Implement `RngCore` for boxed references to an `RngCore`.
@@ -482,10 +502,10 @@ impl<R: RngCore + ?Sized> RngCore for Box<R> {
         (**self).try_fill_bytes(dest)
     }
 
-    #[inline(always)]
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
-        (**self).next_rng_value_after_state_updates(rng_state_updates)
-    }
+    // #[inline(always)]
+    // fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
+    //     (**self).next_rng_value_after_state_updates(rng_state_updates)
+    // }
 }
 
 #[cfg(feature = "std")]

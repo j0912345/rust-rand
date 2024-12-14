@@ -9,7 +9,7 @@
 #[cfg(feature="serde1")] use serde::{Serialize, Deserialize};
 use rand_core::impls::fill_bytes_via_next;
 use rand_core::le::read_u64_into;
-use rand_core::{SeedableRng, RngCore, Error};
+use rand_core::{Error, PublicRngState, RngCore, SeedableRng};
 
 /// A xoshiro256++ random number generator.
 ///
@@ -88,15 +88,28 @@ impl RngCore for Xoshiro256PlusPlus {
     }
 
     #[inline]
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64> {
-        let temp_rng_state = self.s;
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        fill_bytes_via_next(self, dest);
+    }
 
-        let result_plusplus = temp_rng_state[0]
+    #[inline]
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+}
+
+impl PublicRngState for Xoshiro256PlusPlus{
+    #[inline]
+    fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64 {
+        let mut temp_rng_state = self.s.clone();
+
+        let mut result_plusplus = temp_rng_state[0]
             .wrapping_add(temp_rng_state[3])
             .rotate_left(23)
             .wrapping_add(temp_rng_state[0]);
         
-        let i:u64 = 0u64;
+        let mut i:u64 = 0u64;
 
         while i < rng_state_updates {
 
@@ -119,18 +132,11 @@ impl RngCore for Xoshiro256PlusPlus {
             i += 1;
         }
 
-        Ok(result_plusplus)
+        result_plusplus
     }
 
-    #[inline]
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        fill_bytes_via_next(self, dest);
-    }
-
-    #[inline]
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-        self.fill_bytes(dest);
-        Ok(())
+    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u32) -> u32{
+        (self.next_rng_value_after_state_updates_u64(rng_state_updates) >> 32) as u32
     }
 }
 

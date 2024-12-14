@@ -11,6 +11,8 @@ use rand_core::impls::{next_u64_via_u32, fill_bytes_via_next};
 use rand_core::le::read_u32_into;
 use rand_core::{SeedableRng, RngCore, Error};
 
+
+
 /// A xoshiro128++ random number generator.
 ///
 /// The xoshiro128++ algorithm is not suitable for cryptographic purposes, but
@@ -24,6 +26,7 @@ use rand_core::{SeedableRng, RngCore, Error};
 pub struct Xoshiro128PlusPlus {
     s: [u32; 4],
 }
+
 
 impl SeedableRng for Xoshiro128PlusPlus {
     type Seed = [u8; 16];
@@ -80,15 +83,35 @@ impl RngCore for Xoshiro128PlusPlus {
         result_starstar
     }
 
+
+
     #[inline]
-    fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> u64 {
-        let temp_rng_state = self.s;
-        let result_starstar = temp_rng_state[0]
+    fn next_u64(&mut self) -> u64 {
+        next_u64_via_u32(self)
+    }
+
+    #[inline]
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        fill_bytes_via_next(self, dest);
+    }
+
+    #[inline]
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+}
+
+impl PublicRngState for Xoshiro128PlusPlus{
+    #[inline]
+    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u64) -> u64 {
+        let mut temp_rng_state = self.s.clone();
+        let mut result_starstar = temp_rng_state[0]
             .wrapping_add(self.s[3])
             .rotate_left(7)
             .wrapping_add(self.s[0]);
 
-        let i:u64 = 0u64;
+        let mut i:u64 = 0u64;
 
         while i < rng_state_updates {
             result_starstar = temp_rng_state[0]
@@ -109,23 +132,11 @@ impl RngCore for Xoshiro128PlusPlus {
             i += 1;
         }
 
-        Ok(result_starstar as u32)
+        result_starstar
     }
 
-    #[inline]
-    fn next_u64(&mut self) -> u64 {
-        next_u64_via_u32(self)
-    }
-
-    #[inline]
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        fill_bytes_via_next(self, dest);
-    }
-
-    #[inline]
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-        self.fill_bytes(dest);
-        Ok(())
+    fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64 {
+        next_u64_via_u32_not_advanced(rng_state_updates)
     }
 }
 
