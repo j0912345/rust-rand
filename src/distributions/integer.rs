@@ -9,7 +9,6 @@
 //! The implementations of the `Standard` distribution for integer types.
 
 use crate::distributions::{Distribution, Standard};
-use crate::rng::PubRngState;
 use crate::Rng;
 #[cfg(all(target_arch = "x86", feature = "simd_support"))]
 use core::arch::x86::{__m128i, __m256i};

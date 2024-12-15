@@ -36,6 +36,11 @@ pub trait Distribution<T> {
     /// Generate a random value of `T`, using `rng` as the source of randomness.
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> T;
 
+    /// Generate a random value of `T`, using `rng` as the source of randomness, but without advancing the rng state.
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> T{
+        panic!("sample_not_advanced() is not implemented for this type. it is only avalible for SmallRng.")
+    }
+
     /// Create an iterator that generates random values of `T`, using `rng` as
     /// the source of randomness.
     ///

@@ -10,6 +10,9 @@
 
 use rand_core::{Error, RngCore, SeedableRng, PublicRngState};
 
+use crate::distributions::uniform::{SampleRange, SampleUniform};
+use crate::distributions::{self, Distribution, Standard};
+
 #[cfg(target_pointer_width = "64")]
 type Rng = super::xoshiro256plusplus::Xoshiro256PlusPlus;
 #[cfg(not(target_pointer_width = "64"))]
@@ -116,19 +119,43 @@ impl SeedableRng for SmallRng {
     }
 }
 
-impl PublicRngState for SmallRng{
-    #[inline(always)]
-    fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64{
-        self.0.next_rng_value_after_state_updates_u64(rng_state_updates)
-    }
+/// `PublicRngState`. custom trait added so I can see upcoming rng in ruffle for the game I want to TAS.
+// pub trait PublicRngState{
+//     #[inline(always)]
+//     /// generate u64 value without updating the rng state
+//     fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64;
+//     /// generate u32 value without updating the rng state
+//     #[inline(always)] 
+//     fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u32) -> u32;
 
-    #[inline(always)]
-    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u32) -> u32{
-        self.0.next_rng_value_after_state_updates_u32(rng_state_updates)
-    }
+//     #[inline(always)] 
+//     fn gen_range_rng_state_not_advanced<T, R>(&mut self, range: R, rng_state_updates:u64) -> T
+//     where
+//         T: SampleUniform,
+//         R: SampleRange<T>
+//     {
+//         assert!(!range.is_empty(), "cannot sample empty range");
+//         range.sample_single_not_advanced(self, rng_state_updates) 
+//     }
 
-    // #[inline(always)]
-    // fn gen_range_rng_state_not_advanced(rng_state_updates:u64) -> u64{
-    //     self.0.gen_range_rng_state_not_advanced(rng_state_updates)
-    // }
-}
+// }
+
+
+// impl PublicRngState for SmallRng{
+//     #[inline(always)]
+//     fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64{
+//         self.0.next_rng_value_after_state_updates_u64(rng_state_updates)
+//     }
+
+//     #[inline(always)]
+//     fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u32) -> u32{
+//         self.0.next_rng_value_after_state_updates_u32(rng_state_updates)
+//     }
+
+//     #[inline(always)]
+//     fn gen_range_rng_state_not_advanced(rng_state_updates:u64) -> u64{
+//         self.0.gen_range_rng_state_not_advanced(rng_state_updates)
+//     }
+// }
+
+/// like next_u64_via_u32(), but without advancing the rng state

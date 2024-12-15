@@ -97,9 +97,7 @@ impl RngCore for Xoshiro256PlusPlus {
         self.fill_bytes(dest);
         Ok(())
     }
-}
 
-impl PublicRngState for Xoshiro256PlusPlus{
     #[inline]
     fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64 {
         let mut temp_rng_state = self.s.clone();
@@ -132,11 +130,13 @@ impl PublicRngState for Xoshiro256PlusPlus{
             i += 1;
         }
 
-        result_plusplus
+        Ok(result_plusplus)
     }
 
+
+    #[inline]
     fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u32) -> u32{
-        (self.next_rng_value_after_state_updates_u64(rng_state_updates) >> 32) as u32
+        (self.next_rng_value_after_state_updates_u64(rng_state_updates as u64) >> 32) as u32
     }
 }
 

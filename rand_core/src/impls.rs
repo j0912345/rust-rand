@@ -19,7 +19,6 @@
 
 use crate::RngCore;
 use core::cmp::min;
-use crate::PublicRngState;
 
 /// Implement `next_u64` via `next_u32`, little-endian order.
 pub fn next_u64_via_u32<R: RngCore + ?Sized>(rng: &mut R) -> u64 {
@@ -29,12 +28,12 @@ pub fn next_u64_via_u32<R: RngCore + ?Sized>(rng: &mut R) -> u64 {
     (y << 32) | x
 }
 
-/// like next_u64_via_u32(), but without advancing the rng state
-pub fn next_u64_via_u32_not_advanced<R: PublicRngState + ?Sized>(rng: &mut R, rng_state_updates:u64) -> u64 {
+/// Implement `next_u64` via `next_u32`, little-endian order, without updating the rng state
+pub fn next_u64_via_u32_not_advanced<R: RngCore + ?Sized>(rng: &mut R, rng_state_updates:u32) -> Result<u64, &str> {
     // Use LE; we explicitly generate one value before the next.
-    let x = u64::from(rng.next_rng_value_after_state_updates_u64(rng_state_updates));
-    let y = u64::from(rng.next_rng_value_after_state_updates_u64(rng_state_updates+1));
-    (y << 32) | x
+    let x = u64::from(rng.next_rng_value_after_state_updates_u32(rng_state_updates));
+    let y = u64::from(rng.next_rng_value_after_state_updates_u32(rng_state_updates+1));
+    Ok((y << 32) | x)
 }
 
 /// Implement `fill_bytes` via `next_u64` and `next_u32`, little-endian order.

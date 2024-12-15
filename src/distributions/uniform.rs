@@ -114,15 +114,12 @@ use crate::distributions::utils::{BoolAsSIMD, FloatAsSIMD, FloatSIMDUtils, Widen
 use crate::distributions::Distribution;
 use crate::{Rng, RngCore};
 
-use crate::rng::PubRngState;
-
 #[cfg(not(feature = "std"))]
 #[allow(unused_imports)] // rustc doesn't detect that this is actually used
 use crate::distributions::utils::Float;
 
 #[cfg(feature = "simd_support")] use packed_simd::*;
 
-use rand_core::PublicRngState;
 #[cfg(feature = "serde1")]
 use serde::{Serialize, Deserialize};
 
@@ -258,6 +255,9 @@ pub trait UniformSampler: Sized {
     /// Sample a value.
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::X;
 
+    /// sample a value, without updating the rng state
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> Self::X;
+
     /// Sample a single value uniformly from a range with inclusive lower bound
     /// and exclusive upper bound `[low, high)`.
     ///
@@ -303,24 +303,24 @@ pub trait UniformSampler: Sized {
         uniform.sample(rng)
     }
 
-    /// 
-    fn sample_single_not_advanced<R: PubRngState + ?Sized, B1, B2>(low: B1, high: B2, rng: &mut R, rng_update_states:u64)
+    /// same as sample_single, but doesn't advance the rng state
+    fn sample_single_not_advanced<R: RngCore + ?Sized, B1, B2>(low: B1, high: B2, rng: &mut R, rng_update_states:u64)
     -> Self::X
     where B1: SampleBorrow<Self::X> + Sized,
           B2: SampleBorrow<Self::X> + Sized
     {
         let uniform: Self = UniformSampler::new_inclusive(low, high);
-        uniform.sample_single_not_advanced(rng)
+        uniform.sample_not_advanced(rng, rng_update_states)
     }
 
     /// same as sample_single_inclusive, but doesn't advance the RNG state.
-    fn sample_single_inclusive_not_advanced<R: PubRngState + ?Sized, B1, B2>(low: B1, high: B2, rng: &mut R, rng_update_states:u64)
+    fn sample_single_inclusive_not_advanced<R: RngCore + ?Sized, B1, B2>(low: B1, high: B2, rng: &mut R, rng_update_states:u64)
     -> Self::X
     where B1: SampleBorrow<Self::X> + Sized,
           B2: SampleBorrow<Self::X> + Sized
     {
         let uniform: Self = UniformSampler::new_inclusive(low, high);
-        uniform.sample_single_inclusive_not_advanced(rng)
+        uniform.sample_not_advanced(rng, rng_update_states)
     }
 }
 
@@ -374,7 +374,7 @@ pub trait SampleRange<T> {
     fn sample_single<R: RngCore + ?Sized>(self, rng: &mut R) -> T;
 
     /// do the same thing as sample_single, but without advancing the RNG state.
-    fn sample_single_not_advanced<R: PublicRngState + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T;
+    fn sample_single_not_advanced<R: RngCore + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T;
 
     /// Check whether the range is empty.
     fn is_empty(&self) -> bool;
@@ -404,7 +404,7 @@ impl<T: SampleUniform + PartialOrd> SampleRange<T> for RangeInclusive<T> {
     }
 
     #[inline]
-    fn sample_single_not_advanced<R: PublicRngState + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T {
+    fn sample_single_not_advanced<R: RngCore + ?Sized>(self, rng: &mut R, rng_state_updates:u64) -> T {
         T::Sampler::sample_single_inclusive_not_advanced(self.start(), self.end(), rng, rng_state_updates)
     }
 
@@ -590,6 +590,25 @@ macro_rules! uniform_int_impl {
             }
 
             #[inline]
+            fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> Self::X {
+                let range = self.range as $unsigned as $u_large;
+                if range > 0 {
+                    let unsigned_max = ::core::$u_large::MAX;
+                    let zone = unsigned_max - (self.z as $unsigned as $u_large);
+                    loop {
+                        let v: $u_large = rng.gen_not_advanced(rng_state_updates);
+                        let (hi, lo) = v.wmul(range);
+                        if lo <= zone {
+                            return self.low.wrapping_add(hi as $ty);
+                        }
+                    }
+                } else {
+                    // Sample from the entire integer range.
+                    rng.gen_not_advanced(rng_state_updates)
+                }
+            }
+
+            #[inline]
             fn sample_single_not_advanced<R: Rng + ?Sized, B1, B2>(low_b: B1, high_b: B2, rng: &mut R, rng_state_updates:u64) -> Self::X
             where
                 B1: SampleBorrow<Self::X> + Sized,
@@ -602,9 +621,8 @@ macro_rules! uniform_int_impl {
             }
 
 
-            // :(
             #[inline]
-            fn sample_single_inclusive_not_advanced<R: PubRngState + ?Sized, B1, B2>(low_b: B1, high_b: B2, rng: &mut R, rng_state_updates:u64) -> Self::X
+            fn sample_single_inclusive_not_advanced<R: RngCore + ?Sized, B1, B2>(low_b: B1, high_b: B2, rng: &mut R, rng_state_updates:u64) -> Self::X
             where
                 B1: SampleBorrow<Self::X> + Sized,
                 B2: SampleBorrow<Self::X> + Sized,
@@ -616,7 +634,7 @@ macro_rules! uniform_int_impl {
                 // If the above resulted in wrap-around to 0, the range is $ty::MIN..=$ty::MAX,
                 // and any integer will do.
                 if range == 0 {
-                    return rng.next_rng_value_after_state_updates_u64(rng_state_updates);
+                    return rng.gen_not_advanced(rng_state_updates);
                 }
 
                 let zone = if ::core::$unsigned::MAX <= ::core::u16::MAX as $unsigned {
@@ -634,7 +652,7 @@ macro_rules! uniform_int_impl {
 
                 let mut i = 0;
                 loop {
-                    let v: $u_large = rng.next_rng_value_after_state_updates_u64(i+rng_state_updates);
+                    let v: $u_large = rng.gen_not_advanced(i+rng_state_updates);
                     let (hi, lo) = v.wmul(range);
                     
                     if lo <= zone {
@@ -879,6 +897,17 @@ impl UniformSampler for UniformChar {
         // Validity of input char values is assumed.
         unsafe { core::char::from_u32_unchecked(x) }
     }
+
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> Self::X {
+        let mut x = self.sampler.sample_not_advanced(rng, rng_state_updates);
+        if x >= CHAR_SURROGATE_START {
+            x += CHAR_SURROGATE_LEN;
+        }
+        // SAFETY: x must not be in surrogate range or greater than char::MAX.
+        // This relies on range constructors which accept char arguments.
+        // Validity of input char values is assumed.
+        unsafe { core::char::from_u32_unchecked(x) }
+    }
 }
 
 /// The back-end implementing [`UniformSampler`] for floating-point types.
@@ -994,6 +1023,22 @@ macro_rules! uniform_float_impl {
             fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::X {
                 // Generate a value in the range [1, 2)
                 let value1_2 = (rng.gen::<$uty>() >> $bits_to_discard).into_float_with_exponent(0);
+
+                // Get a value in the range [0, 1) in order to avoid
+                // overflowing into infinity when multiplying with scale
+                let value0_1 = value1_2 - 1.0;
+
+                // We don't use `f64::mul_add`, because it is not available with
+                // `no_std`. Furthermore, it is slower for some targets (but
+                // faster for others). However, the order of multiplication and
+                // addition is important, because on some platforms (e.g. ARM)
+                // it will be optimized to a single (non-FMA) instruction.
+                value0_1 * self.scale + self.low
+            }
+
+            fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> Self::X {
+                // Generate a value in the range [1, 2)
+                let value1_2 = (rng.gen_not_advanced::<$uty>(rng_state_updates) >> $bits_to_discard).into_float_with_exponent(0);
 
                 // Get a value in the range [0, 1) in order to avoid
                 // overflowing into infinity when multiplying with scale
@@ -1231,6 +1276,36 @@ impl UniformSampler for UniformDuration {
                 loop {
                     let s = secs.sample(rng);
                     let n = nano_range.sample(rng);
+                    if !(s == max_secs && n > max_nanos) {
+                        let sum = n + self.offset;
+                        break Duration::new(s, sum);
+                    }
+                }
+            }
+        }
+    }
+
+    #[inline]
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> Duration {
+        match self.mode {
+            UniformDurationMode::Small { secs, nanos } => {
+                let n = nanos.sample_not_advanced(rng, rng_state_updates);
+                Duration::new(secs, n)
+            }
+            UniformDurationMode::Medium { nanos } => {
+                let nanos = nanos.sample_not_advanced(rng, rng_state_updates);
+                Duration::new(nanos / 1_000_000_000, (nanos % 1_000_000_000) as u32)
+            }
+            UniformDurationMode::Large {
+                max_secs,
+                max_nanos,
+                secs,
+            } => {
+                // constant folding means this is at least as fast as `Rng::sample(Range)`
+                let nano_range = Uniform::new(0, 1_000_000_000);
+                loop {
+                    let s = secs.sample_not_advanced(rng, rng_state_updates);
+                    let n = nano_range.sample_not_advanced(rng, rng_state_updates);
                     if !(s == max_secs && n > max_nanos) {
                         let sum = n + self.offset;
                         break Duration::new(s, sum);
