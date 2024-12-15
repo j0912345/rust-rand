@@ -1728,6 +1728,13 @@ mod tests {
                     x: self.0.sample(rng),
                 }
             }
+
+
+            fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> Self::X {
+                MyF32 {
+                    x: self.0.sample_not_advanced(rng, rng_state_updates),
+                }
+            }
         }
         impl SampleUniform for MyF32 {
             type Sampler = UniformMyF32;

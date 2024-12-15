@@ -135,7 +135,7 @@ impl RngCore for Xoshiro256PlusPlus {
 
 
     #[inline]
-    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u32) -> u32{
+    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u64) -> u32{
         (self.next_rng_value_after_state_updates_u64(rng_state_updates as u64) >> 32) as u32
     }
 }

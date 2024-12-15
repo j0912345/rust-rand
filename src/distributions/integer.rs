@@ -24,6 +24,10 @@ impl Distribution<u8> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> u8 {
         rng.next_u32() as u8
+    }
+    #[inline]
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> u8 {
+        rng.next_rng_value_after_state_updates_u32(rng_state_updates) as u8
     }   
 }
 
@@ -32,6 +36,11 @@ impl Distribution<u16> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> u16 {
         rng.next_u32() as u16
     }
+
+    #[inline]
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> u16 {
+        rng.next_rng_value_after_state_updates_u32(rng_state_updates) as u16
+    }   
 }
 
 impl Distribution<u32> for Standard {
@@ -39,12 +48,22 @@ impl Distribution<u32> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> u32 {
         rng.next_u32()
     }
+
+    #[inline]
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> u32 {
+        rng.next_rng_value_after_state_updates_u32(rng_state_updates)
+    }
 }
 
 impl Distribution<u64> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> u64 {
         rng.next_u64()
+    }
+
+    #[inline]
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> u64 {
+        rng.next_rng_value_after_state_updates_u64(rng_state_updates)
     }
 }
 
@@ -54,6 +73,15 @@ impl Distribution<u128> for Standard {
         // Use LE; we explicitly generate one value before the next.
         let x = u128::from(rng.next_u64());
         let y = u128::from(rng.next_u64());
+        (y << 64) | x
+    }
+
+    #[inline]
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> u128 {
+
+        // Use LE; we explicitly generate one value before the next.
+        let x = u128::from(rng.next_rng_value_after_state_updates_u64(rng_state_updates));
+        let y = u128::from(rng.next_rng_value_after_state_updates_u64(rng_state_updates+1));
         (y << 64) | x
     }
 }
@@ -66,9 +94,21 @@ impl Distribution<usize> for Standard {
     }
 
     #[inline]
+    #[cfg(any(target_pointer_width = "32", target_pointer_width = "16"))]
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> usize {
+        rng.next_rng_value_after_state_updates_u32(rng_state_updates) as usize
+    }
+
+    #[inline]
     #[cfg(target_pointer_width = "64")]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> usize {
         rng.next_u64() as usize
+    }
+
+    #[inline]
+    #[cfg(target_pointer_width = "64")]
+    fn sample_not_advanced<R: Rng + ?Sized>(&self, rng: &mut R, rng_state_updates:u64) -> usize {
+        rng.next_rng_value_after_state_updates_u64(rng_state_updates) as usize
     }
 }
 

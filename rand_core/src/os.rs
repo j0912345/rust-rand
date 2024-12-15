@@ -68,6 +68,16 @@ impl RngCore for OsRng {
         getrandom(dest)?;
         Ok(())
     }
+
+    /// `next_rng_value_after_state_updates_u64()` is like `next_u64()` but without advancing the rng state.
+    fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64{
+        panic!("next_rng_value_after_state_updates_u64() is not implemented for this rng implementation. it only supports smallRng.")
+    }
+
+    /// `next_rng_value_after_state_updates_u32()` is like `next_u32()` but without advancing the rng state.
+    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u64) -> u32{
+        panic!("next_rng_value_after_state_updates_u32() is not implemented for this rng implementation. it only supports smallRng.")
+    }
 }
 
 #[test]

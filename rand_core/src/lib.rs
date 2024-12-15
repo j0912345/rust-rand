@@ -193,14 +193,27 @@ pub trait RngCore {
 
 
     /// `next_rng_value_after_state_updates_u64()` is like `next_u64()` but without advancing the rng state.
-    fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64{
-        panic!("next_rng_value_after_state_updates_u64() is not implemented for this rng implementation. it only supports smallRng.")
-    }
+    fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64;
+    // {
+    //     panic!("next_rng_value_after_state_updates_u64() is not implemented for this rng implementation. it only supports smallRng.")
+    // }
 
     /// `next_rng_value_after_state_updates_u32()` is like `next_u32()` but without advancing the rng state.
-    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u32) -> u32{
-        panic!("next_rng_value_after_state_updates_u32() is not implemented for this rng implementation. it only supports smallRng.")
-    }
+    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u64) -> u32;
+    // {
+    //     panic!("next_rng_value_after_state_updates_u32() is not implemented for this rng implementation. it only supports smallRng.")
+    // }
+
+
+    // /// `next_rng_value_after_state_updates_u64()` is like `next_u64()` but without advancing the rng state.
+    // fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64{
+    //     panic!("next_rng_value_after_state_updates_u64() is not implemented for this rng implementation. it only supports smallRng.")
+    // }
+
+    // /// `next_rng_value_after_state_updates_u32()` is like `next_u32()` but without advancing the rng state.
+    // fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u64) -> u32{
+    //     panic!("next_rng_value_after_state_updates_u32() is not implemented for this rng implementation. it only supports smallRng.")
+    // }
 }
 
 /// A marker trait used to indicate that an [`RngCore`] or [`BlockRngCore`]
@@ -463,10 +476,15 @@ impl<'a, R: RngCore + ?Sized> RngCore for &'a mut R {
         (**self).try_fill_bytes(dest)
     }
 
-    // #[inline(always)]
-    // fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
-    //     (**self).next_rng_value_after_state_updates(rng_state_updates)
-    // }
+    #[inline(always)]
+    fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64{
+        (**self).next_rng_value_after_state_updates_u64(rng_state_updates)
+    }
+
+    #[inline(always)]
+    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u64) -> u32{
+        (**self).next_rng_value_after_state_updates_u32(rng_state_updates)
+    }
 }
 
 // Implement `RngCore` for boxed references to an `RngCore`.
@@ -494,10 +512,15 @@ impl<R: RngCore + ?Sized> RngCore for Box<R> {
         (**self).try_fill_bytes(dest)
     }
 
-    // #[inline(always)]
-    // fn next_rng_value_after_state_updates(&mut self, rng_state_updates:u64) -> Result<u64, &str>{
-    //     (**self).next_rng_value_after_state_updates(rng_state_updates)
-    // }
+    #[inline(always)]
+    fn next_rng_value_after_state_updates_u64(&mut self, rng_state_updates:u64) -> u64{
+        (**self).next_rng_value_after_state_updates_u64(rng_state_updates)
+    }
+
+    #[inline(always)]
+    fn next_rng_value_after_state_updates_u32(&mut self, rng_state_updates:u64) -> u32{
+        (**self).next_rng_value_after_state_updates_u32(rng_state_updates)
+    }
 }
 
 #[cfg(feature = "std")]

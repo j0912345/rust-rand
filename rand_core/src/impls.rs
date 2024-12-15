@@ -31,8 +31,8 @@ pub fn next_u64_via_u32<R: RngCore + ?Sized>(rng: &mut R) -> u64 {
 /// Implement `next_u64` via `next_u32`, little-endian order, without updating the rng state
 pub fn next_u64_via_u32_not_advanced<R: RngCore + ?Sized>(rng: &mut R, rng_state_updates:u32) -> u64 {
     // Use LE; we explicitly generate one value before the next.
-    let x = u64::from(rng.next_rng_value_after_state_updates_u32(rng_state_updates));
-    let y = u64::from(rng.next_rng_value_after_state_updates_u32(rng_state_updates+1));
+    let x = u64::from(rng.next_rng_value_after_state_updates_u32(rng_state_updates.into()));
+    let y = u64::from(rng.next_rng_value_after_state_updates_u32((rng_state_updates+1).into()));
     (y << 32) | x
 }
 
