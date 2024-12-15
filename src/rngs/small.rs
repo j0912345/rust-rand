@@ -8,7 +8,7 @@
 
 //! A small fast RNG
 
-use rand_core::{Error, RngCore, SeedableRng, PublicRngState};
+use rand_core::{Error, RngCore, SeedableRng};
 
 use crate::distributions::uniform::{SampleRange, SampleUniform};
 use crate::distributions::{self, Distribution, Standard};
@@ -119,7 +119,7 @@ impl SeedableRng for SmallRng {
     }
 }
 
-/// `PublicRngState`. custom trait added so I can see upcoming rng in ruffle for the game I want to TAS.
+// `PublicRngState`. custom trait added so I can see upcoming rng in ruffle for the game I want to TAS.
 // pub trait PublicRngState{
 //     #[inline(always)]
 //     /// generate u64 value without updating the rng state
@@ -157,5 +157,3 @@ impl SeedableRng for SmallRng {
 //         self.0.gen_range_rng_state_not_advanced(rng_state_updates)
 //     }
 // }
-
-/// like next_u64_via_u32(), but without advancing the rng state

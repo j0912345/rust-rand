@@ -111,7 +111,7 @@ mod xoshiro128plusplus;
 #[cfg(feature = "std_rng")] mod std;
 #[cfg(all(feature = "std", feature = "std_rng"))] pub(crate) mod thread;
 
-#[cfg(feature = "small_rng")] pub use self::small::SmallRng;
+// #[cfg(feature = "small_rng")] pub use self::small::SmallRng;
 #[cfg(feature = "std_rng")] pub use self::std::StdRng;
 #[cfg(all(feature = "std", feature = "std_rng"))] pub use self::thread::ThreadRng;
 
